@@ -49,6 +49,23 @@
     });
   }
   function clearBots() { botT.forEach(clearTimeout); botT = []; }
+
+  /* Just the letters, coloured. Used where a crest would be too small to read. */
+  function orgTagHTML(orgId) {
+    var o = window.ORG_BY_ID[orgId];
+    if (!o) return "";
+    return '<span class="org" style="color:' + o.color + '" title="' + U.esc(o.name) + '">' +
+      o.letters + '</span>';
+  }
+
+  /* A chapter's Greek letters set as a badge. Not anyone's real crest. */
+  function crestHTML(orgId, cls) {
+    var o = window.ORG_BY_ID[orgId];
+    if (!o) return "";
+    return '<span class="crest ' + (cls || "") + '" style="--cc:' + o.color + '" title="' + U.esc(o.name) + '">' +
+      '<span class="lt">' + o.letters + '</span>' +
+      '<span class="ab">' + U.esc(o.id) + '</span></span>';
+  }
   function later(fn, ms) { var id = setTimeout(fn, ms); botT.push(id); return id; }
 
   /* ---------------- game setup ---------------- */
@@ -60,6 +77,7 @@
       round: 0,
       totalRounds: saved.rounds || 8,
       packs: saved.packs || { classic: true, campus: true, greek: true, deep: true, chaos: true },
+      music: saved.music !== false,
       players: {}, order: [],
       deck: [], prompt: null,
       answers: {}, spotQueue: [], spot: null,
@@ -71,7 +89,8 @@
 
   function saveSetup() {
     try {
-      localStorage.setItem("spill.setup", JSON.stringify({ rounds: G.totalRounds, packs: G.packs }));
+      localStorage.setItem("spill.setup",
+        JSON.stringify({ rounds: G.totalRounds, packs: G.packs, music: G.music }));
     } catch (e) {}
   }
 
@@ -280,6 +299,7 @@
     clearBots();
     G.phase = name;
     G.seq++;
+    if (window.MUSIC) MUSIC.setPhase(name);
     G.duration = dur || 0;
     G.deadline = dur ? now() + dur : 0;
     painted = "";
@@ -323,13 +343,18 @@
 
   function buildSpotQueue() {
     var pool = active().filter(function (p) { return !!G.answers[p.pid]; });
-    var perRound = Math.max(2, Math.min(4, Math.ceil(active().length / G.totalRounds)));
+    var perRound = Math.max(2, Math.min(5, Math.ceil(active().length / G.totalRounds)));
     if (active().length < 4) perRound = Math.min(perRound, Math.max(1, pool.length));
 
     // Fewest features first, shuffled inside each tier, so everyone gets a turn.
     U.shuffle(pool);
     pool.sort(function (a, b) { return stat(a.pid).featured - stat(b.pid).featured; });
     G.spotQueue = pool.slice(0, Math.min(perRound, pool.length)).map(function (p) { return p.pid; });
+  }
+
+  function voteMs() {
+    var options = Math.max(1, active().length - 1);
+    return Math.round(Math.max(26000, Math.min(45000, 20000 + options * 800)) * TS);
   }
 
   function nextSpot() {
@@ -344,8 +369,9 @@
       votes: {}, gains: {}, correctCount: 0
     };
     U.sfx.tick();
-    setPhase("vote", T.vote);
-    phaseT = setTimeout(endVote, T.vote);
+    var vms = voteMs();
+    setPhase("vote", vms);
+    phaseT = setTimeout(endVote, vms);
     scheduleBotVotes();
   }
 
@@ -487,7 +513,7 @@
       G.players[pid] = {
         pid: pid,
         name: uniqueName(names[(G.order.length) % names.length], pid),
-        org: window.ORGS[(Math.random() * (window.ORGS.length - 1)) | 0],
+        org: window.ORGS[(Math.random() * (window.ORGS.length - 1)) | 0].id,
         color: free.length ? free[0] : U.COLORS[G.order.length % U.COLORS.length],
         score: 0, connected: false, bot: true, joinedAt: now()
       };
@@ -523,7 +549,7 @@
         G.spot.votes[p.pid] = { target: target, left: Math.max(0, G.deadline - now()) };
         repaintSoft();
         checkAutoAdvance();
-      }, (900 + Math.random() * Math.min(7000, T.vote * 0.6)) * (FAST ? 0.3 : 1));
+      }, (900 + Math.random() * Math.min(7000, G.duration * 0.6)) * (FAST ? 0.3 : 1));
     });
   }
 
@@ -580,7 +606,7 @@
     return '<div class="pcard' + (p.connected || p.bot ? "" : " off") + '" data-pid="' + U.esc(p.pid) + '">' +
       '<span class="dot" style="background:' + U.esc(p.color) + '"></span>' +
       '<span class="nm">' + U.esc(p.name) + '</span>' +
-      (p.org ? '<span class="org">' + U.esc(p.org) + '</span>' : '') +
+      (p.org ? orgTagHTML(p.org) : '') +
       '</div>';
   }
 
@@ -604,6 +630,11 @@
               '<div><div class="lbl">Room code</div><div class="codebig" id="codebig">' + U.esc(G.code || "....") + '</div></div>' +
             '</div>' +
           '</div>' +
+          '<ol class="howto">' +
+            '<li><b>1</b> Scan the code and put your name in</li>' +
+            '<li><b>2</b> Everyone answers the same question</li>' +
+            '<li><b>3</b> Guess who wrote each answer</li>' +
+          '</ol>' +
         '</div>' +
         '<div class="lobby-right">' +
           '<div class="roster-head"><div class="n"><span id="pcount">' + G.order.length + '</span> in</div>' +
@@ -614,9 +645,17 @@
             '<div class="setup-row"><span class="lbl">Length</span>' + roundChips + '</div>' +
           '</div>' +
         '</div>' +
+        '<div class="lobby-foot">' +
+          '<div class="stripe-band"></div>' +
+          '<div class="chapter-strip">' +
+            window.ORGS.filter(function (o) { return o.id !== "Guest"; })
+              .map(function (o) { return crestHTML(o.id); }).join("") +
+          '</div>' +
+        '</div>' +
       '</div>',
       '<button class="btn" id="startBtn"' + (active().length < 2 ? " disabled" : "") + '>Start the game</button>' +
       '<button class="btn ghost" id="muteBtn">' + (U.sfx.isMuted() ? "Sound off" : "Sound on") + '</button>' +
+      '<button class="btn ghost" id="musicBtn">' + (G.music ? "Music on" : "Music off") + '</button>' +
       '<span class="hint">Space to start</span>'
     ));
 
@@ -641,6 +680,24 @@
       U.sfx.setMuted(!U.sfx.isMuted());
       e.currentTarget.textContent = U.sfx.isMuted() ? "Sound off" : "Sound on";
     });
+    U.on("#musicBtn", "click", function (e) {
+      toggleMusic();
+      e.currentTarget.textContent = G.music ? "Music on" : "Music off";
+    });
+    fitRoster();
+    requestAnimationFrame(fitRoster);
+  }
+
+  /* Shrink the player cards until the whole roster fits. Everyone should be
+     able to find their own name in the lobby, whether that is 6 people or 30. */
+  var PC_STEPS = [1, 0.92, 0.84, 0.76, 0.68, 0.6, 0.54];
+  function fitRoster() {
+    var r = U.q("#roster");
+    if (!r || !r.clientHeight) return;
+    for (var i = 0; i < PC_STEPS.length; i++) {
+      r.style.setProperty("--pc", PC_STEPS[i]);
+      if (r.scrollHeight <= r.clientHeight + 1) break;
+    }
   }
 
   function updateLobby() {
@@ -664,6 +721,7 @@
     if (mb) mb.textContent = String(G.order.length);
     var sb = U.q("#startBtn"); if (sb) sb.disabled = active().length < 2;
     var cb = U.q("#codebig"); if (cb && G.code) cb.textContent = G.code;
+    fitRoster();
   }
 
   function paintIntro() {
@@ -676,6 +734,7 @@
   function paintAnswer() {
     U.render(shell(
       '<div class="stage">' +
+        '<div class="ghost-word">ANSWER</div>' +
         '<div class="flyer prompt-card"><div class="tape"></div>' +
           '<div class="pack">Everyone answers &middot; ' + U.esc(packLabel(G.prompt && G.prompt.p)) + '</div>' +
           '<div class="prompt-text">' + U.promptHTML(G.prompt ? G.prompt.t : "") + '</div>' +
@@ -732,6 +791,7 @@
     var cls = U.fitClass(s.text);
     U.render(shell(
       '<div class="stage">' +
+        '<div class="ghost-word">WHO?</div>' +
         '<div class="kicker">Who said it?</div>' +
         '<div class="flyer answer-card"><div class="tape"></div>' +
           '<div class="answer-prompt-sm">' + U.esc(String(s.prompt).replace(/_{2,}/g, "…")) + '</div>' +
@@ -764,9 +824,10 @@
     var right = (s.correct || []).map(function (v) { return P(v); }).filter(Boolean);
     U.render(shell(
       '<div class="stage">' +
+        '<div class="burst"></div>' +
         '<div class="kicker">That was</div>' +
         '<div class="reveal-name" style="color:' + U.esc(a ? a.color : "#fff") + '">' + U.esc(a ? a.name : "?") + '</div>' +
-        (a && a.org ? '<div class="kicker dim">' + U.esc(a.org) + '</div>' : '') +
+        (a && a.org ? crestHTML(a.org, "lg") : '') +
         '<div class="flyer" style="padding:18px 30px;max-width:min(1000px,92%)">' +
           '<div class="answer-text ' + U.fitClass(s.text) + '" style="font-size:clamp(20px,2.6vw,42px)">&ldquo;' + U.esc(s.text) + '&rdquo;</div>' +
         '</div>' +
@@ -818,6 +879,7 @@
     var cls = ["p2", "p1", "p3"], marks = ["2", "1", "3"], crowns = ["", "👑", ""];
     U.render(shell(
       '<div class="stage" style="gap:clamp(12px,2vh,26px)">' +
+        '<div class="burst"></div>' +
         '<div class="kicker">Final</div>' +
         '<div class="podium">' +
           order.map(function (p, i) {
@@ -893,10 +955,36 @@
       else if (G.phase === "reveal") { clearTimeout(phaseT); nextSpot(); }
       else if (G.phase === "scores") { clearTimeout(phaseT); nextRound(); }
     } else if (e.key === "m" || e.key === "M") {
-      U.sfx.setMuted(!U.sfx.isMuted());
-      U.toast(U.sfx.isMuted() ? "Sound off" : "Sound on");
-      var b = U.q("#muteBtn"); if (b) b.textContent = U.sfx.isMuted() ? "Sound off" : "Sound on";
+      var m = !U.sfx.isMuted();
+      U.sfx.setMuted(m);
+      if (window.MUSIC) MUSIC.setMuted(m);
+      U.toast(m ? "Muted" : "Sound on");
+      var b = U.q("#muteBtn"); if (b) b.textContent = m ? "Sound off" : "Sound on";
+    } else if (e.key === "b" || e.key === "B") {
+      toggleMusic();
+      U.toast(G.music ? "Music on" : "Music off");
+      var mb = U.q("#musicBtn"); if (mb) mb.textContent = G.music ? "Music on" : "Music off";
     }
+  }
+
+  /* ---------------- music ---------------- */
+  function toggleMusic() {
+    G.music = !G.music;
+    if (window.MUSIC) MUSIC.setEnabled(G.music);
+    saveSetup();
+  }
+
+  /* Browsers will not let audio start until the host has interacted with the
+     page, so arm it on the first click or key press and then get out of the way. */
+  function armAudio() {
+    function go() {
+      document.removeEventListener("pointerdown", go);
+      document.removeEventListener("keydown", go);
+      if (window.MUSIC && G.music) MUSIC.start();
+    }
+    document.addEventListener("pointerdown", go);
+    document.addEventListener("keydown", go);
+    if (window.MUSIC && G.music) MUSIC.start();   // works if we already have a gesture
   }
 
   /* ---------------- boot ---------------- */
@@ -904,6 +992,7 @@
     newGame();
     U.keepAwake();
     paint();
+    armAudio();
 
     net = NET.host({
       onReady: function (code) {
@@ -923,6 +1012,9 @@
     clearInterval(tickT);
     tickT = setInterval(tick, 120);
     document.addEventListener("keydown", onKey);
+    window.addEventListener("resize", function () {
+      if (G.phase === "lobby") requestAnimationFrame(fitRoster);
+    });
 
     var bots = parseInt(params.get("bots") || "0", 10);
     if (bots > 0) {
@@ -944,6 +1036,7 @@
         else if (G.phase === "intro") { clearTimeout(phaseT); beginAnswer(); }
       },
       jumpToEnd: function () { G.round = G.totalRounds; clearTimeout(phaseT); finish(); },
+      music: function (on) { if (on !== undefined && on !== G.music) toggleMusic(); return G.music; },
       state: function () {
         return {
           phase: G.phase, round: G.round + "/" + G.totalRounds,

@@ -20,12 +20,15 @@
   }
 
   /* Player colours - readable on black and distinct from each other.
-     24 of them so a 20-person room never has two people sharing one. */
+     32 of them, so a room of 25 (or a walk-in 30th) never has two people
+     sharing one. Ordered so the first dozen are the most distinguishable. */
   var COLORS = [
     "#FFC53D", "#E8384F", "#4CD98A", "#4CC9F0", "#B57BFF", "#FF8A3D",
     "#FF6FB5", "#6EE7C8", "#F2E14C", "#7C9CFF", "#FF5C5C", "#9BE15D",
     "#00D3C7", "#D66BFF", "#FFA8A8", "#5CE1E6", "#C6F04E", "#3FBF5F",
-    "#2E8BFF", "#8A6BFF", "#FF4FD8", "#A0E9FF", "#D9D2C5", "#E0A85C"
+    "#2E8BFF", "#8A6BFF", "#FF4FD8", "#A0E9FF", "#D9D2C5", "#E0A85C",
+    "#7FD1B9", "#FF9770", "#B0C4FF", "#DDA0DD", "#9AD5CA", "#F7B32B",
+    "#6BD6E8", "#C48FFF"
   ];
 
   /* Turn "My toxic trait is ___" into markup with a gold blank. */
@@ -179,6 +182,7 @@
 
   window.UI = {
     esc: esc, render: render, q: q, qa: qa, on: on, root: root,
+    audioCtx: ctx,
     COLORS: COLORS, promptHTML: promptHTML, fitClass: fitClass,
     ringHTML: ringHTML, setRing: setRing,
     sfx: sfx, buzz: buzz, toast: toast, confetti: confetti,

@@ -1,7 +1,7 @@
 # SPILL THE LETTERS
 
 A live, phone-controlled party game for the **Unified Greek Council at VCU**. Built for a room
-of about 20 people and a projector.
+of about 25 people and a projector.
 
 **Live:** https://qwendor.github.io/spill/
 
@@ -65,13 +65,15 @@ Without `cert.pem` / `key.pem` the server still runs, HTTP only.
 | Key / button | What it does |
 | --- | --- |
 | `Space` | Start the game, skip the timer, advance the reveal or scoreboard |
-| `M` | Mute / unmute |
+| `M` | Mute everything |
+| `B` | Background music on / off |
 | **Skip to voting** | Ends the answer phase early |
 | **Skip this one** | Drops the current answer without scoring it (use if something is out of pocket) |
 | **Reveal now** | Ends voting early |
 
 In the lobby the host also picks the **packs** (Classic, Campus, Greek Life, Deep Cuts, Chaos)
-and the **length** (5, 8 or 12 rounds — roughly 12, 20 or 30 minutes with 20 people).
+and the **length** (5, 8 or 12 rounds). With 25 people that lands around 20, 28 and 36 minutes
+at the outside, though phases end as soon as everyone is in, so expect noticeably less.
 Those settings are remembered on that laptop.
 
 ### Things worth knowing before you run it
@@ -85,7 +87,10 @@ Those settings are remembered on that laptop.
   keeps its name and score, because identity lives in `localStorage` and the host keeps the seat
   warm. Players can also join late and start playing the next round.
 - **Reloading the host ends the game.** All state lives in that tab.
-- Up to 40 people can join; 24 distinct player colours, so a room of 20 never has a repeat.
+- Up to 40 people can join. 32 distinct player colours, so a room of 25 never has a repeat, and
+  the lobby roster shrinks its cards to keep everybody's name on screen.
+- Voting time scales with the roster (26 to 45 seconds) because picking from 24 names takes
+  longer than picking from 5. It still ends early once everyone has voted.
 
 ---
 
@@ -99,7 +104,8 @@ Those settings are remembered on that laptop.
 | `js/net.js` | PeerJS wrapper: room codes, reconnects, keepalive |
 | `js/host.js` | Game state machine, scoring, and every big-screen view |
 | `js/player.js` | Phone client |
-| `js/ui.js` | Shared helpers: colours, sound, confetti, timer ring |
+| `js/ui.js` | Shared helpers: colours, sound effects, confetti, timer ring |
+| `js/music.js` | The background music, synthesised live (see below) |
 | `vendor/` | PeerJS and the QR encoder, vendored so nothing loads from a CDN at showtime |
 | `serve.py` | Local HTTP + HTTPS server for testing on the LAN |
 
@@ -128,8 +134,27 @@ On a phone: `SPILL_PLAYER.answer("text")`, `SPILL_PLAYER.vote(playerId)`, `SPILL
 
 ---
 
+## Music
+
+The background bed is **synthesised live in Web Audio**, not played from a file. Nothing to
+license, nothing to download at the venue, and it follows the game: mellow in the lobby, driving
+while people answer, tense while the room votes, and ducked under the reveal so the sting cuts
+through. A dembow groove in A minor over Am - F - C - G at 100 BPM.
+
+Browsers block audio until the host interacts with the page, so it starts on the first click or
+key press. `MUSIC.level()` in the console returns the RMS actually reaching the speakers, which
+answers "is the music on?" without having to hear it.
+
+To use a real track instead, drop a file in and set `FILE_OVERRIDE` at the bottom of
+`js/music.js` (or call `MUSIC.useFile("audio/whatever.mp3")`). It still ducks on the reveal.
+
 ## Design
 
 Built to match the UGC at VCU flyer look: black ground, gold sunburst from the council seal,
-crimson accents, heavy condensed uppercase type, and Greek letterforms drifting behind
-everything. Answers go up as taped-up flyer cards.
+crimson accents, heavy condensed uppercase type, halftone corners, print registration marks, and
+Greek letterforms drifting behind everything. Answers go up as taped-up flyer cards.
+
+**On the chapter crests:** each UGC chapter is represented by its **Greek letters** set in the
+game's own display face. No chapter's actual crest, badge or logo is reproduced anywhere, and the
+crest colours are this game's palette, not any chapter's official colours. Those marks belong to
+the organisations, so if UGC wants their real artwork in here, that has to come from them.

@@ -56,9 +56,14 @@
           '<input class="field" id="nm" maxlength="18" autocomplete="off" autocapitalize="words" ' +
           'placeholder="What everyone calls you" value="' + U.esc(me.name) + '"></div>' +
           '<div><span class="field-lbl">Your chapter (optional)</span>' +
-          '<div class="orgpick" id="orgs">' +
+          '<div class="orgpick-crests" id="orgs">' +
             window.ORGS.map(function (o) {
-              return '<button class="chip" data-org="' + U.esc(o) + '" aria-pressed="' + (me.org === o) + '">' + U.esc(o) + '</button>';
+              return '<button data-org="' + U.esc(o.id) + '" aria-pressed="' + (me.org === o.id) + '" ' +
+                'title="' + U.esc(o.name) + '">' +
+                '<span class="crest" style="--cc:' + o.color + '">' +
+                  '<span class="lt">' + o.letters + '</span>' +
+                  '<span class="ab">' + U.esc(o.id) + '</span>' +
+                '</span></button>';
             }).join("") +
           '</div></div>' +
           '<div><span class="field-lbl">Your colour</span>' +

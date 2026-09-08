@@ -135,10 +135,24 @@ window.PACKS = [
   { id: "chaos",   label: "Chaos" }
 ];
 
-/* Chapters shown on the join screen. Blank = no affiliation. */
+/* UGC chapters, as listed on fsl.vcu.edu. We render each one's Greek LETTERS
+   as a typographic crest. We deliberately do not reproduce any chapter's real
+   crest or badge: those are the organisations' own registered marks. The
+   colours below are this game's palette, not any chapter's official colours. */
 window.ORGS = [
-  "LTA", "aKDPhi", "KPG", "LTP", "LAU", "APsiL", "LUL", "SLU", "Guest"
+  { id: "LTA",    letters: "ΛΘΑ", name: "Lambda Theta Alpha",    color: "#E8384F" },
+  { id: "aKDPhi", letters: "αΚΔΦ", name: "alpha Kappa Delta Phi", color: "#B57BFF" },
+  { id: "KPG",    letters: "ΚΦΓ", name: "Kappa Phi Gamma",       color: "#FF8A3D" },
+  { id: "LTP",    letters: "ΛΘΦ", name: "Lambda Theta Phi",      color: "#4CC9F0" },
+  { id: "LAU",    letters: "ΛΑΥ", name: "Lambda Alpha Upsilon",  color: "#FFC53D" },
+  { id: "APsiL",  letters: "ΑΨΛ", name: "Alpha Psi Lambda",      color: "#4CD98A" },
+  { id: "LUL",    letters: "ΛΥΛ", name: "Lambda Upsilon Lambda", color: "#FF6FB5" },
+  { id: "SLU",    letters: "ΣΛΥ", name: "Sigma Lambda Upsilon",  color: "#6EE7C8" },
+  { id: "Guest",  letters: "★",               name: "Not in a chapter",      color: "#D9D2C5" }
 ];
+
+window.ORG_BY_ID = {};
+window.ORGS.forEach(function (o) { window.ORG_BY_ID[o.id] = o; });
 
 /* Canned answers used only by the offline test bots (?bots=N). */
 window.BOT_ANSWERS = [
