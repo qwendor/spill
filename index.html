@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#08070B">
+<title>Spill the Letters — UGC at VCU</title>
+<meta name="description" content="A live, phone-controlled party game for the Unified Greek Council at VCU. Everyone answers, everyone guesses who said it.">
+<meta property="og:title" content="Spill the Letters">
+<meta property="og:description" content="Everyone answers. Everyone guesses who said it. UGC at VCU.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='31' fill='%2308070B' stroke='%23FFC53D' stroke-width='3'/%3E%3Ctext x='32' y='43' font-family='Impact,sans-serif' font-size='26' fill='%23FFC53D' text-anchor='middle'%3ESL%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="bg">
+  <div class="glow"></div>
+  <div class="rays"></div>
+  <div class="marquee-letters top">Λ Θ Α Φ Γ Κ Δ Σ Υ Ψ Ω Π Ξ Ρ Τ Ν Λ Θ Α Φ Γ Κ Δ Σ Υ Ψ Ω Π Ξ Ρ Τ Ν </div>
+  <div class="marquee-letters">Α Δ Φ Ω Λ Υ Κ Γ Σ Θ Ψ Ρ Ν Τ Ξ Π Α Δ Φ Ω Λ Υ Κ Γ Σ Θ Ψ Ρ Ν Τ Ξ Π </div>
+</div>
+<div class="grain"></div>
+
+<main id="app"></main>
+
+<script src="vendor/peerjs.min.js"></script>
+<script src="vendor/qrcode.min.js"></script>
+<script src="js/prompts.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/net.js"></script>
+<script src="js/host.js"></script>
+<script src="js/player.js"></script>
+<script>
+(function () {
+  "use strict";
+  var U = window.UI;
+
+  function hashCode() {
+    var h = (location.hash || "").replace(/^#\/?/, "").trim().toUpperCase();
+    return /^[A-Z0-9]{4}$/.test(h) ? h : "";
+  }
+
+  function paintLanding() {
+    U.render(
+      '<div class="landing">' +
+        '<div class="wordmark">' +
+          '<div class="l1">Spill</div><div class="l2">The</div><div class="l3">Letters</div>' +
+          '<div class="ugc-tag">Unified Greek Council &middot; VCU</div>' +
+        '</div>' +
+        '<p class="blurb">Everyone answers the same question on their phone. One answer goes up on the ' +
+        'big screen at a time, and the whole room votes on who wrote it.</p>' +
+        '<div class="landing-actions">' +
+          '<button class="btn" id="hostBtn">Host on this screen</button>' +
+        '</div>' +
+        '<form class="joinform" id="joinForm">' +
+          '<input class="field codefield" id="codeIn" maxlength="4" placeholder="CODE" ' +
+          'autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text">' +
+          '<button class="btn red" type="submit">Join</button>' +
+        '</form>' +
+        '<p class="blurb" style="font-size:13px;opacity:.7">Put the host screen on the projector. ' +
+        'Everyone else scans the QR code that appears.</p>' +
+      '</div>'
+    );
+
+    U.on("#hostBtn", "click", function () {
+      history.replaceState(null, "", location.pathname + "?host=1");
+      startHost();
+    });
+
+    var f = document.getElementById("joinForm");
+    f.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var v = (document.getElementById("codeIn").value || "").trim().toUpperCase();
+      if (!/^[A-Z0-9]{4}$/.test(v)) { U.toast("That code should be 4 characters", true); return; }
+      location.hash = "#" + v;
+      startPlayer(v);
+    });
+    document.getElementById("codeIn").addEventListener("input", function (e) {
+      e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    });
+  }
+
+  var booted = false;
+  var bootedCode = "";
+  function startHost() {
+    if (booted) return; booted = true;
+    document.title = "Spill the Letters — host";
+    window.HOST.start();
+  }
+  function startPlayer(code) {
+    if (booted) return; booted = true;
+    bootedCode = code;
+    document.title = "Spill the Letters — " + code;
+    window.PLAYER.start(code);
+  }
+
+  function boot() {
+    var params = new URLSearchParams(location.search);
+    var c = hashCode();
+    if (c) startPlayer(c);
+    else if (params.has("host")) startHost();
+    else paintLanding();
+  }
+
+  window.addEventListener("hashchange", function () {
+    var c = hashCode();
+    if (!c) return;
+    // Already in a room and someone scanned the QR for a different one:
+    // a hash change alone would leave us talking to the old host.
+    if (booted) { if (c !== bootedCode) location.reload(); return; }
+    startPlayer(c);
+  });
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
+})();
+</script>
+</body>
+</html>
