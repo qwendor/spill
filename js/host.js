@@ -620,7 +620,7 @@
 
     U.render(shell(
       '<div class="lobby">' +
-        '<div class="lobby-left">' +
+        '<div class="lobby-left"><div class="ll-inner">' +
           '<div class="wordmark"><div class="l1">Spill</div><div class="l2">The</div><div class="l3">Letters</div>' +
             '<div class="ugc-tag">Unified Greek Council &middot; VCU</div></div>' +
           '<div class="joinbox">' +
@@ -635,7 +635,7 @@
             '<li><b>2</b> Everyone answers the same question</li>' +
             '<li><b>3</b> Guess who wrote each answer</li>' +
           '</ol>' +
-        '</div>' +
+        '</div></div>' +
         '<div class="lobby-right">' +
           '<div class="roster-head"><div class="n"><span id="pcount">' + G.order.length + '</span> in</div>' +
             '<div class="kicker dim">Waiting for the room</div></div>' +
@@ -684,12 +684,36 @@
       toggleMusic();
       e.currentTarget.textContent = G.music ? "Music on" : "Music off";
     });
-    fitRoster();
-    requestAnimationFrame(fitRoster);
+    refitLobbySoon();
   }
 
   /* Shrink the player cards until the whole roster fits. Everyone should be
      able to find their own name in the lobby, whether that is 6 people or 30. */
+  /* The left column carries the wordmark, QR, code and explainer. Rather than
+     hand-tuning every clamp for every projector, scale the block to its track. */
+  function fitLeft() {
+    var outer = U.q(".lobby-left"), inner = U.q(".ll-inner");
+    if (!outer || !inner) return;
+    inner.style.transform = "none";
+    var avail = outer.clientHeight, need = inner.offsetHeight;
+    if (!avail || !need) return;
+    var k = Math.min(1, avail / need);
+    inner.style.transform = k < 0.999 ? "scale(" + k.toFixed(3) + ")" : "none";
+  }
+
+  /* Refit directly and again after layout settles. Deliberately not
+     requestAnimationFrame only: that stops firing in a backgrounded tab, and a
+     host screen that gets alt-tabbed away and back would come back mis-sized. */
+  function refitLobby() {
+    fitRoster();
+    fitLeft();
+  }
+  function refitLobbySoon() {
+    refitLobby();
+    setTimeout(refitLobby, 60);
+    setTimeout(refitLobby, 300);
+  }
+
   var PC_STEPS = [1, 0.92, 0.84, 0.76, 0.68, 0.6, 0.54];
   function fitRoster() {
     var r = U.q("#roster");
@@ -1012,8 +1036,11 @@
     clearInterval(tickT);
     tickT = setInterval(tick, 120);
     document.addEventListener("keydown", onKey);
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "visible" && G.phase === "lobby") refitLobbySoon();
+    });
     window.addEventListener("resize", function () {
-      if (G.phase === "lobby") requestAnimationFrame(fitRoster);
+      if (G.phase === "lobby") refitLobbySoon();
     });
 
     var bots = parseInt(params.get("bots") || "0", 10);
